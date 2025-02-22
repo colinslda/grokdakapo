@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>DaCapo.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&family=DM+Sans&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #ffffff;
+            --text-color: #000000;
+            --nav-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            width: 100%;
+            max-width: 393px; /* iPhone 14 Pro width */
+            margin: 0 auto;
+        }
+
+        .app-header {
+            padding: 15px;
+            text-align: center;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 24px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            max-width: 393px;
+            background: var(--primary-bg);
+            z-index: 10;
+        }
+
+        .content {
+            padding: 60px 15px 80px;
+            height: calc(100vh - 60px);
+            overflow-y: auto;
+        }
+
+        .tab {
+            display: none;
+        }
+
+        .tab.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: 393px;
+            height: var(--nav-height);
+            display: flex;
+            background: var(--primary-bg);
+            border-top: 1px solid #eee;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: #666;
+        }
+
+        select, input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button:hover {
+            background: #333;
+        }
+
+        .note-item, .piece-item, .deadline-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            padding: 10px 0;
+        }
+
+        .calendar-day {
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .calendar-day.has-deadline {
+            background: #f0f0f0;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">DaCapo.</div>
+    
+    <div class="content">
+        <!-- Tab 1: Journal de bord -->
+        <div id="journal" class="tab">
+            <select id="pieceSelect"></select>
+            <textarea id="noteInput" placeholder="Ajouter une note..."></textarea>
+            <button onclick="addNote()">Ajouter</button>
+            <select id="sortNotes">
+                <option value="piece">Trier par pièce</option>
+                <option value="date">Trier par date</option>
+            </select>
+            <div id="notesList"></div>
+        </div>
+
+        <!-- Tab 2: Répertoire -->
+        <div id="repertoire" class="tab">
+            <input id="composer" placeholder="Compositeur">
+            <input id="title" placeholder="Titre">
+            <select id="type">
+                <option value="Concerto">Concerto</option>
+                <option value="Sonate">Sonate</option>
+                <option value="Pièce solo">Pièce solo</option>
+                <option value="Caprice/Etude">Caprice/Etude</option>
+                <option value="Technique">Technique</option>
+            </select>
+            <button onclick="addPiece()">Ajouter pièce</button>
+            <div id="piecesList"></div>
+        </div>
+
+        <!-- Tab 3: Calendrier -->
+        <div id="calendar" class="tab">
+            <div id="calendarHeader"></div>
+            <div id="calendarGrid"></div>
+            <input type="date" id="deadlineDate">
+            <input id="deadlineDesc" placeholder="Description">
+            <button onclick="addDeadline()">Ajouter échéance</button>
+            <div id="deadlinesList"></div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="switchTab('journal')">Journal</div>
+        <div class="nav-item" onclick="switchTab('repertoire')">Répertoire</div>
+        <div class="nav-item" onclick="switchTab('calendar')">Calendrier</div>
+    </div>
+
+    <script>
+        let pieces = [];
+        let notes = [];
+        let deadlines = [];
+        let currentDate = new Date();
+
+        // Tab switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            
+            if (tabId === 'calendar') renderCalendar();
+        }
+
+        // Journal functions
+        function addNote() {
+            const pieceId = document.getElementById('pieceSelect').value;
+            const note = document.getElementById('noteInput').value;
+            if (pieceId && note) {
+                notes.push({ pieceId, note, date: new Date() });
+                document.getElementById('noteInput').value = '';
+                renderNotes();
+            }
+        }
+
+        function renderNotes() {
+            const sortBy = document.getElementById('sortNotes').value;
+            const sortedNotes = [...notes].sort((a, b) => 
+                sortBy === 'date' ? b.date - a.date : 
+                pieces.find(p => p.id === a.pieceId).title.localeCompare(pieces.find(p => p.id === b.pieceId).title)
+            );
+            
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = sortedNotes.map(n => {
+                const piece = pieces.find(p => p.id === n.pieceId);
+                return `<div class="note-item">${piece.title}: ${n.note} (${n.date.toLocaleDateString()})</div>`;
+            }).join('');
+        }
+
+        // Repertoire functions
+        function addPiece() {
+            const composer = document.getElementById('composer').value;
+            const title = document.getElementById('title').value;
+            const type = document.getElementById('type').value;
+            if (composer && title) {
+                const piece = { id: Date.now(), composer, title, type };
+                pieces.push(piece);
+                document.getElementById('composer').value = '';
+                document.getElementById('title').value = '';
+                renderPieces();
+                updatePieceSelect();
+            }
+        }
+
+        function renderPieces() {
+            const piecesList = document.getElementById('piecesList');
+            piecesList.innerHTML = pieces.map(p => 
+                `<div class="piece-item">${p.composer} - ${p.title} (${p.type})</div>`
+            ).join('');
+        }
+
+        function updatePieceSelect() {
+            const select = document.getElementById('pieceSelect');
+            select.innerHTML = '<option value="">Sélectionner une pièce</option>' + 
+                pieces.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+        }
+
+        // Calendar functions
+        function renderCalendar() {
+            const header = document.getElementById('calendarHeader');
+            const grid = document.getElementById('calendarGrid');
+            
+            header.innerHTML = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}
+                <button onclick="changeMonth(-1)">◄</button>
+                <button onclick="changeMonth(1)">►</button>`;
+            
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            let html = '';
+            
+            for (let i = 0; i < firstDay.getDay(); i++) html += '<div></div>';
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+                const hasDeadline = deadlines.some(d => d.date.toDateString() === date.toDateString());
+                html += `<div class="calendar-day ${hasDeadline ? 'has-deadline' : ''}">${i}</div>`;
+            }
+            grid.innerHTML = html;
+            renderDeadlines();
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function addDeadline() {
+            const date = new Date(document.getElementById('deadlineDate').value);
+            const desc = document.getElementById('deadlineDesc').value;
+            if (date && desc) {
+                deadlines.push({ date, desc });
+                document.getElementById('deadlineDate').value = '';
+                document.getElementById('deadlineDesc').value = '';
+                renderCalendar();
+            }
+        }
+
+        function renderDeadlines() {
+            const sortedDeadlines = [...deadlines].sort((a, b) => a.date - b.date);
+            document.getElementById('deadlinesList').innerHTML = sortedDeadlines.map(d => 
+                `<div class="deadline-item">${d.date.toLocaleDateString()} - ${d.desc}</div>`
+            ).join('');
+        }
+
+        // Initial setup
+        switchTab('journal');
+    </script>
+
+    <!-- Service Worker pour PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        }
+    </script>
+</body>
+</html>
