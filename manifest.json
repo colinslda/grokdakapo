@@ -1,7 +1,7 @@
 {
     "name": "DaCapo.",
     "short_name": "DaCapo",
-    "start_url": "/grokdacapo/index",
+    "start_url": "/grokdakapo/index.html",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#ffffff",
